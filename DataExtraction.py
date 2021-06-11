@@ -2,7 +2,7 @@
 # 
 #   Data Extraction from MPC Data Files
 
-class file_data:
+class FileData:
     """File Object with Data and Metadata taken from MPC Files
     
     Metadata is loaded into a standard Python List object as self.metadata
@@ -13,15 +13,14 @@ class file_data:
         automatically called to retrieve data. 
         
         Otherwise, program will prompt for filename in terminal"""
-
-        if filename: 
+        if filename:
             self.filename = filename
         else:
             self.filename = self.get_filename()
-        self.lines = self.open_file(self.filename)
-        self.metadata = self.get_metadata(self.lines)
-        # print(metadata) # Debug
-        self.data = self.get_data(self.lines)
+        self.lines = self.load_file()
+        self.metadata = self.get_metadata()
+        # print(metadata) # Debugquit
+        self.data = self.get_data()
         # for key, value in data.items():
         #     print(key,':',value,'\n') # Debug
 
@@ -38,14 +37,14 @@ class file_data:
         if len(fname)<1: fname = 'c:\\my_docs\\Coding\\Python\\maderp\\test_data.bak'
         return fname
 
-    def open_file(self, fname):
+    def load_file(self):
         """Attempts to open and read a provided file.
         If it is successful it returns the contents of the file"""
         # print(f"Attempting to open file {fname}...") # Debug
         try:
-            fhand = open(fname)
+            fhand = open(self.filename)
         except OSError:
-            print(f"Could not open {fname}")
+            print(f"Could not open {self.filename}")
             print("Verify the file name and this program's location")
             print("Quitting now...")
             quit()
@@ -54,55 +53,80 @@ class file_data:
         fhand.close()
         return lines
 
-    def get_metadata(self, lines):
+    def get_metadata(self):
         """Reads through the lines of a file to find and return the metadata as a dictionary
     Requires the file to be opened and it's contents to be read into a variable and passed as an arg"""
 
         i = 1
-        for line in lines:
+        for line in self.lines:
             line = line.rstrip()
             if line:
+                words = line.split()
                 if i == 1:
-                    file_name = line
+                    file_name = line[6:]
                     i+=1
                     continue
                 elif i == 2: 
-                    start_date = line
+                    start_date = words[2]
+                    i += 1
+                    continue
+                elif i == 3:
+                    end_date = words[2]
                     i += 1
                     continue
                 elif i == 4:
-                    rat_id = line
+                    rat_id = line[9:]
+                    i += 1
+                    continue
+                elif i == 5:
+                    experiment = line[12:]
+                    i += 1
+                    continue
+                elif i == 6:
+                    group = line[6:]
                     i += 1
                     continue
                 elif i == 7:
-                    box = line
+                    box = words[1]
+                    i += 1
+                    continue
+                elif i == 8:
+                    start_time = words[2]
+                    i += 1
+                    continue
+                elif i == 9:
+                    end_time = words[2]
                     i += 1
                     continue
                 elif i == 10:
-                    program = line
+                    program = line[5:]
                     i += 1
                     continue
                 else:
-                    i += 1
-                    continue
+                    break
 
         metadata = {
             'file_name': file_name,
             'start_date': start_date,
+            'end_date': end_date,
             'rat_id': rat_id,
+            'experiment' : experiment,
+            'group' : group,
             'box': box,
+            'start_time' : start_time,
+            'end_time' : end_time,
             'program': program,
         }
 
         # <!> Raise Error 
-        if not len(metadata) == 5:
+        if not len(metadata) == 10:
             print("Could not Gather file information")
             print("Quitting now...")
             quit()
         
         return metadata
 
-    def get_data(self, lines):
+    def get_data(self):
         """Reads through the lines of a file to find and return all data and vars as a dictionary
     Requires the file to be opened and it's contents to be read into a variable and passed as an arg"""
         i = 1
@@ -112,7 +136,7 @@ class file_data:
         array_char = ''
         array_list = []
         d = {}
-        for line in lines:
+        for line in self.lines:
             line = line.rstrip()
 
             if line and i < header_size:     # skip metadata information
