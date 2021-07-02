@@ -28,10 +28,6 @@ class FileData:
         # for key, value in data.items():
         #     print(key,':',value,'\n') # Debug
 
-    def _OrganizeData_(self):
-        """ Sorts Data based on subclass """
-        pass
-
     def get_filename(self):
         """Prompts the user for a relative filename or the absolute filepath
         This method is called if file_data is not initialized with a filename
@@ -212,6 +208,8 @@ class PRFileData(FileData):
     def store_data(self):
         cur = initialize_db()
         print("Executing statements to store PR data into the database")
+        # store DataFile table
+
         # code to enter PR data into database
         print("closing connection to database")
         cur.close()
