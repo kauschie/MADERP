@@ -2,6 +2,8 @@
 # 
 #   Data Extraction from MPC Data Files
 
+import sqlite3
+
 class FileData:
     """File Object with Data and Metadata taken from MPC Files
     
@@ -20,9 +22,15 @@ class FileData:
         self.lines = self.load_file()
         self.metadata = self.get_metadata()
         # print(metadata) # Debugquit
+        if not self.metadata['program'] in self.valid_file_formats:
+            raise Exception("Invalid file format")
         self.data = self.get_data()
         # for key, value in data.items():
         #     print(key,':',value,'\n') # Debug
+
+    def _OrganizeData_(self):
+        """ Sorts Data based on subclass """
+        pass
 
     def get_filename(self):
         """Prompts the user for a relative filename or the absolute filepath
@@ -178,3 +186,51 @@ class FileData:
 
         d[array_char] = array_list
         return d
+    
+    def store_data(self):
+        pass
+
+## Notes about adaptations of FR Programs to data structure
+## Amy FR Program v6 doesnt have variable A(10) - Cue Type
+
+class FRFileData(FileData):
+    valid_file_formats = ["Amy FR Program v8", "Amy FR Program v7", "Amy FR Program v6"] 
+
+    def store_data(self):
+        curr= initialize_db()
+        print("Executing statements to store FR data into the database")
+        # code to enter FR data into database
+        print("closing connection to database")
+        cur.close()
+
+
+
+
+class PRFileData(FileData):
+    valid_file_formats = ["Amy PR Program"]
+
+    def store_data(self):
+        cur = initialize_db()
+        print("Executing statements to store PR data into the database")
+        # code to enter PR data into database
+        print("closing connection to database")
+        cur.close()
+
+def initialize_db():
+    global Database
+    if not Database:
+        try:
+            conn = sqlite3.connect('DoctorG.db')
+            print("Connection to DoctorG.db established")
+            return conn.cursor()
+        except:
+            print("Could not connect to DoctorG.db")
+            quit()
+    else:
+        print("Connection to DoctorG.db already established")
+        return conn.cursor()
+
+if __name__ == "__main__":
+    Database = None
+    n09 = FRFileData('test_data.bak')
+    n06 = FRFileData('test_data2.bak')
