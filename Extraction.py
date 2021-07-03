@@ -2,7 +2,6 @@
 # 
 #   Data Extraction from MPC Data Files
 
-import sqlite3
 
 class FileData:
     """File Object with Data and Metadata taken from MPC Files
@@ -18,17 +17,17 @@ class FileData:
         if filename:
             self.filename = filename
         else:
-            self.filename = self.get_filename()
-        self.lines = self.load_file()
-        self.metadata = self.get_metadata()
-        # print(metadata) # Debugquit
+            self.filename = self._get_filename_()
+        self.lines = self._load_file_()
+        self.metadata = self._get_metadata_()
+        # print(metadata) # Debug
         if not self.metadata['program'] in self.valid_file_formats:
             raise Exception("Invalid file format")
-        self.data = self.get_data()
+        self.data = self._get_data_()
         # for key, value in data.items():
         #     print(key,':',value,'\n') # Debug
 
-    def get_filename(self):
+    def _get_filename_(self):
         """Prompts the user for a relative filename or the absolute filepath
         This method is called if file_data is not initialized with a filename
 
@@ -41,7 +40,7 @@ class FileData:
         if len(fname)<1: fname = 'c:\\my_docs\\Coding\\Python\\maderp\\test_data.bak'
         return fname
 
-    def load_file(self):
+    def _load_file_(self):
         """Attempts to open and read a provided file.
         If it is successful it returns the contents of the file"""
         # print(f"Attempting to open file {fname}...") # Debug
@@ -57,7 +56,7 @@ class FileData:
         fhand.close()
         return lines
 
-    def get_metadata(self):
+    def _get_metadata_(self):
         """Reads through the lines of a file to find and return the metadata as a dictionary
     Requires the file to be opened and it's contents to be read into a variable and passed as an arg"""
 
@@ -71,11 +70,13 @@ class FileData:
                     i+=1
                     continue
                 elif i == 2: 
-                    start_date = words[2]
+                    pieces = words[2].split('/')
+                    start_date = '20'+pieces[2]+'-'+pieces[0]+'-'+pieces[1]
                     i += 1
                     continue
                 elif i == 3:
-                    end_date = words[2]
+                    pieces = words[2].split('/')
+                    end_date = '20'+pieces[2]+'-'+pieces[0]+'-'+pieces[1]
                     i += 1
                     continue
                 elif i == 4:
@@ -83,19 +84,23 @@ class FileData:
                     i += 1
                     continue
                 elif i == 5:
-                    experiment = line[12:]
+                    experiment = int(line[12:])
                     i += 1
                     continue
                 elif i == 6:
-                    group = line[6:]
+                    group = int(line[7:])
                     i += 1
                     continue
                 elif i == 7:
-                    box = words[1]
+                    box = int(words[1])
                     i += 1
                     continue
                 elif i == 8:
                     start_time = words[2]
+                    pieces = words[2].split(':')
+                    num = int(pieces[0])
+                    pieces[0] = f"{num:02}"
+                    start_time = ':'.join(pieces)
                     i += 1
                     continue
                 elif i == 9:
@@ -130,7 +135,7 @@ class FileData:
         
         return metadata
 
-    def get_data(self):
+    def _get_data_(self):
         """Reads through the lines of a file to find and return all data and vars as a dictionary
     Requires the file to be opened and it's contents to be read into a variable and passed as an arg"""
         i = 1
@@ -182,51 +187,18 @@ class FileData:
 
         d[array_char] = array_list
         return d
-    
-    def store_data(self):
-        pass
+
 
 ## Notes about adaptations of FR Programs to data structure
 ## Amy FR Program v6 doesnt have variable A(10) - Cue Type
 
 class FRFileData(FileData):
-    valid_file_formats = ["Amy FR Program v8", "Amy FR Program v7", "Amy FR Program v6"] 
-
-    def store_data(self):
-        curr= initialize_db()
-        print("Executing statements to store FR data into the database")
-        # code to enter FR data into database
-        print("closing connection to database")
-        cur.close()
-
-
-
+    valid_file_formats = ["Amy FR Program v8", "Amy FR Program v7", "Amy FR Program v6"]
+    dtname = 'FRData' # 'data table name in DoctorG.db'
 
 class PRFileData(FileData):
     valid_file_formats = ["Amy PR Program"]
-
-    def store_data(self):
-        cur = initialize_db()
-        print("Executing statements to store PR data into the database")
-        # store DataFile table
-
-        # code to enter PR data into database
-        print("closing connection to database")
-        cur.close()
-
-def initialize_db():
-    global Database
-    if not Database:
-        try:
-            conn = sqlite3.connect('DoctorG.db')
-            print("Connection to DoctorG.db established")
-            return conn.cursor()
-        except:
-            print("Could not connect to DoctorG.db")
-            quit()
-    else:
-        print("Connection to DoctorG.db already established")
-        return conn.cursor()
+    dtname = 'PRData'
 
 if __name__ == "__main__":
     Database = None
