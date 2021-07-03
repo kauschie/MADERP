@@ -1,33 +1,32 @@
 # Pseudo Code
 # Program Design
 
-## Data Extraction
-# class file_data(filename=)
-# Opens File and reads into self.lines
+# Extraction.py responsible for extracting data from Med Associates Files to a FileData object 
+# that has both data (dictionary) and metadata (list) attriobutes
+
+# FileData objects require a filename at the time of initialization or will be prompted for the filepath when the class is called
+# This can be useful if you want to add a single data file from the commandline vs multiple data files in a later implemented GUI
+
+# Specific subclasses are implemented to extend FileData objects to insert the data correctly into the database through
+# the Extraction.store_data method
+
+# In the future, GUI will need to have checkboxes/some other solution for select available program modules from the databse so that the GUI
+# can correctly insert the selected data files
+
+# Database specific commands (connection and initialization of cursors, creating/erasing the database tables are located in database.py)
+# are available in the database module
 
 
 
-# assign class to file based on the program run
-# parse the file according to the 'program' class looking for that class's specific variables
-# add all data to a database
+### TO DO ###
 
-## Data Cleaning/Extraction Program
-# User input to control which variables/subjects/dates/phases/groups to extract
-# User input to modify/add data such as phases/groups
-# Read data from database and transform/cull to extract the necessary elements
-# Output data to a csv / txt file to be read by spreadsheet program
+# Short Term:
+#   - Database Construction/Destruction for testing
+#   - Inserting Data into the database
+#   - Retrieval Module 
+#       + selecting data from the database and outputting it to a CSV file
+#
 
-## 
-
-
-
-# Parse File for
-# add all variables to a spreadsheet with appropriate columns
-
-# each data file should 
-
-
-# enter data file to be read
-# enter archive to cycle through
-# read txt files and check if they are mpc data files
-# find marker in data file such as program name 
+# Long Term:
+#   - Selecting Multiple Files at once
+#   - GUI
