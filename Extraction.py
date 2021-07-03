@@ -160,7 +160,7 @@ class FileData:
                 # print(f"found the following words: {words}") # Debug
                 if len(words) == 2:                     # identify variable and store data in dictionary wntry
                     # print("you found a variable") # Debug
-                    d[array_char] = float(words[1])
+                    d[array_char] = int(float(words[1]))
                     continue
                 elif len(words) == 1:                   # identfy array header
                     # print("you found an array") # Debug
@@ -174,7 +174,7 @@ class FileData:
             
             if line and words[0][0].isdigit():
                 for word in words[1:]:
-                    array_list.append(word)
+                    array_list.append(int(float(word)))
                 continue
 
             if line and words[0][0].isalpha() and array_flag == 1:       # identify if line starts with the array variable or a digit
@@ -188,17 +188,81 @@ class FileData:
         d[array_char] = array_list
         return d
 
-
 ## Notes about adaptations of FR Programs to data structure
 ## Amy FR Program v6 doesnt have variable A(10) - Cue Type
 
 class FRFileData(FileData):
     valid_file_formats = ["Amy FR Program v8", "Amy FR Program v7", "Amy FR Program v6"]
     dtname = 'FRData' # 'data table name in DoctorG.db'
+    def __init__(self, filename=None):
+        super().__init__(filename)
+        # control variables (cvar) required for database module to access for this class
+        # each subclass needs to implement these variables differently for data insertion into database
+        self._cvar_array_ = self.data['A']
+        self._cvar_indexes_ = [0,1,2,3,4,5,6,7,10]
+        self._cvar_names_ = [
+            'session_duration',
+            'active_side',
+            'inactive_side',
+            'fr',
+            'max_rewards',
+            'light_dur',
+            'pump_dur',
+            'to_dur',
+            'cue_type']
+
+        # Remove cue_type cvar which wasn't present in v6 of the program
+        if self.metadata['program'] == 'Amy FR Program v6':
+            self._cvar_indexes_.pop()
+            self._cvar_names_.pop()
+        # independant variables (ivar) required for database module to access for this class
+        # each subclas needs to implement these variables differently for data insertion into the db
+        self._ivar_array_ = self.data['B']
+        self._ivar_indexes_ = [0,1,2,3,4,5]
+        self._ivar_names_ = [
+            'actrsp',
+            'inactrsp',
+            'rewards',
+            'sessionend',
+            'actrspto',
+            'inactrspto',
+        ]
+
+        self.cvars = _get_vars_(self._cvar_array_, self._cvar_indexes_, self._cvar_names_)
+        self.ivars = _get_vars_(self._ivar_array_, self._ivar_indexes_, self._ivar_names_)
 
 class PRFileData(FileData):
     valid_file_formats = ["Amy PR Program"]
     dtname = 'PRData'
+    # create cvar and ivars
+
+
+def _get_vars_(array, indexes, names):
+    """Looks up data in specified mpc array at specified list of indexes and creates a 
+    vars dictionary with values being array[index] = data
+    
+    used when looking up cvar and ivar data from FileData.data"""
+    vars = {}
+    values = [array[index] for index in indexes]
+    i = 0
+    for column in names:
+        vars[column] = values[i]
+        i += 1
+    return vars
+
+# commented out until it needs to be used
+#
+# def _get_multi_vars_(list_of_arrays, list_of_indexes, list_of_names):
+#     """Returns a dictionary with variables in the event there are variables that span multiple arrays"""
+#     i = 0
+#     vars = {}
+#     all_vars = {}
+#     for array in list_of_arrays:
+#         vars = _get_vars_(array, list_of_indexes[i], list_of_names[i])
+#         for key, value in vars.items():
+#             all_vars[key] = value
+#         i += 1
+#     return all_vars
 
 if __name__ == "__main__":
     Database = None
