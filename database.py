@@ -93,6 +93,32 @@ class Database:
             endtime_id INTEGER,
             program_id INTEGER
         );
+
+        CREATE TABLE "FRData" (
+            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
+            datafile_id INTEGER UNIQUE,
+            frcvars_id INTEGER UNIQUE,
+            actrsp INTEGER,
+            inactrsp INTEGER,
+            rewards INTEGER,
+            sessionend INTEGER,
+            actrspto INTEGER,
+            inactrspto INTEGER,
+        )
+
+        CREATE TABLE "FRCvars" (
+            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
+            datafile_id INTEGER UNIQUE,
+            session_duration INTEGER,
+            active_side INTEGER,
+            inactive_side INTEGER,
+            fr INTEGER,
+            max_rewards INTEGER,
+            light_dur INTEGER,
+            pump_dur INTEGER,
+            to_dur INTEGER,
+            cue_type INTEGER
+            )
         ''')
 
     def _testing_(self):
@@ -103,18 +129,18 @@ class Database:
         Database.conn.commit()
         cur.close()
 
-    def AddToDataFileTable(self, FileData):
+    def _store_DataFile_(self, FileData):
         """Accepts a FileData object and adds the file to the DataFiles Table"""
         print(f"Adding {FileData.filename} to the database...")
         cur = Database.conn.cursor()
 
-        # Add FilePath
+        # Add FilePath to Datafiles
         filepath = os.path.abspath(FileData.filename)
         cur.execute('''INSERT OR IGNORE INTO DataFiles (filepath) VALUES ( ? )''',(filepath,))
         cur.execute('SELECT id FROM DataFiles WHERE filepath = ? ', (filepath,))
         datafiles_id =  cur.fetchone()[0]
 
-        # Add Date Added and get foreign key
+        # Add dateadded to DataFiles and get foreign key
         cur.execute("INSERT OR IGNORE INTO Dates (date) VALUES (date())")
         cur.execute("SELECT id FROM Dates WHERE date = date()")
         dateadded_id =  cur.fetchone()[0]
@@ -128,22 +154,27 @@ class Database:
         cur.execute("INSERT OR IGNORE INTO Dates (date) VALUES ( ? )", (FileData.metadata['start_date'],))
         cur.execute("SELECT id FROM Dates WHERE date = ?", (FileData.metadata['start_date'],))
         startdate_id = cur.fetchone()[0]
+
         # get enddate foreign key
         cur.execute("INSERT OR IGNORE INTO Dates (date) VALUES ( ? )", (FileData.metadata['end_date'],))
         cur.execute("SELECT id FROM Dates WHERE date = ?", (FileData.metadata['end_date'],))
         enddate_id = cur.fetchone()[0]
+
         # get subject_id foreign key
         cur.execute("INSERT OR IGNORE INTO Subjects (subject) VALUES ( ? )", (FileData.metadata['rat_id'],))
         cur.execute("SELECT id FROM Subjects WHERE subject = ?", (FileData.metadata['rat_id'],))
         subject_id = cur.fetchone()[0]
+
         # get starttime_id foreign key
         cur.execute("INSERT OR IGNORE INTO Times (time) VALUES ( ? )", (FileData.metadata['start_time'],))
         cur.execute("SELECT id FROM Times WHERE time = ?", (FileData.metadata['start_time'],))
         starttime_id = cur.fetchone()[0]
+
         # get endtime_id foreign key
         cur.execute("INSERT OR IGNORE INTO Times (time) VALUES ( ? )", (FileData.metadata['end_time'],))
         cur.execute("SELECT id FROM Times WHERE time = ?", (FileData.metadata['end_time'],))
         endtime_id = cur.fetchone()[0]
+
         # get program_id foreign key
         cur.execute("INSERT OR IGNORE INTO Programs (program, datatablename) VALUES (?, ?)", (FileData.metadata['program'], FileData.dtname))
         cur.execute("SELECT id, datatablename FROM Programs WHERE program = ?", (FileData.metadata['program'],))
@@ -176,7 +207,36 @@ class Database:
         # Code to add rest of the file
         cur.close()
     
-    def store_data(self):
+    def _store_datatables_(self, FileData):
+        """Stores data from the FileData parameter into the database"""
+        """Data stored in the database will not be able to be overridden unless the entry is deleted"""
+        data_table = FileData.dtname                #   get table name where data is to be stored
+        l_key = os.path.abspath(FileData.filename)  # get logical key from filename
+        i = self.lookup_id('filepath',l_key,'DataFiles')    # get primary key using logical key
+        self.store_cvars(self, FileData.cvars, i)
+        self.store_ivars(self, FileData.ivars, i)
+
+
+    def store_cvars(self, cvars, i):
+        """unpacks cvars and stores them into the database"""
+        cur = Database.conn.cursor()
+
+
+    def store_ivars(self, ivars, i):
+        pass
+
+
+    def lookup_id(self, column, key, table_name):
+        """Retrieves foreign key from specified table"""
+        sql = f"SELECT id FROM {table_name} WHERE {column} = {key}"
+        cur = Database.conn.cursor()
+        cur.execute(sql)
+        i = cur.fetchone()[0]
+        return i
+
+
+
+
         pass
 
 if __name__ == "__main__":
