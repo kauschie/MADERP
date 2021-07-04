@@ -8,6 +8,7 @@ class FileData:
     
     Metadata is loaded into a standard Python List object as self.metadata
     Data is loaded into a standard Python dictionary object as self.data"""
+    list_of_datafiles = []
 
     def __init__(self, filename=None):
         """If file_data object is called with filename kwarg, methods are
@@ -24,6 +25,8 @@ class FileData:
         if not self.metadata['program'] in self.valid_file_formats:
             raise Exception("Invalid file format")
         self.data = self._get_data_()
+        FileData.list_of_datafiles.append(self)
+
         # for key, value in data.items():
         #     print(key,':',value,'\n') # Debug
 
@@ -251,6 +254,7 @@ def _get_vars_(array, indexes, names):
     return vars
 
 # commented out until it needs to be used
+# useful if dvars or cvars are spread through 
 #
 # def _get_multi_vars_(list_of_arrays, list_of_indexes, list_of_names):
 #     """Returns a dictionary with variables in the event there are variables that span multiple arrays"""

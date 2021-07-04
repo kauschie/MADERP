@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import datetime
+from Extraction import FileData
 from Extraction import FRFileData as FR
 
 
@@ -43,7 +44,9 @@ class Database:
         DROP TABLE IF EXISTS Metadata;
         DROP TABLE IF EXISTS Programs;
         DROP TABLE IF EXISTS Subjects;
-        DROP TABLE IF EXISTS Times;  
+        DROP TABLE IF EXISTS Times;
+        DROP TABLE IF EXISTS FRdVars;
+        DROP TABLE IF EXISTS FRcVars
         ''')
     
     def _create_all_tables_(self, cursor):
@@ -58,7 +61,9 @@ class Database:
             dateadded_id INTEGER, 
             metadata_id INTEGER, 
             program_id INTEGER,
-            datatablename_id INTEGER
+            datatablename INTEGER,
+            dvars_id INTEGER,
+            cvars_id INTEGER
         );
 
         CREATE TABLE "Dates" (
@@ -94,19 +99,18 @@ class Database:
             program_id INTEGER
         );
 
-        CREATE TABLE "FRData" (
+        CREATE TABLE "FRdVars" (
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
             datafile_id INTEGER UNIQUE,
-            frcvars_id INTEGER UNIQUE,
             actrsp INTEGER,
             inactrsp INTEGER,
             rewards INTEGER,
             sessionend INTEGER,
             actrspto INTEGER,
-            inactrspto INTEGER,
-        )
+            inactrspto INTEGER
+        );
 
-        CREATE TABLE "FRCvars" (
+        CREATE TABLE "FRcVars" (
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
             datafile_id INTEGER UNIQUE,
             session_duration INTEGER,
@@ -129,7 +133,7 @@ class Database:
         Database.conn.commit()
         cur.close()
 
-    def _store_DataFile_(self, FileData):
+    def store_DataFile(self, FileData):
         """Accepts a FileData object and adds the file to the DataFiles Table"""
         print(f"Adding {FileData.filename} to the database...")
         cur = Database.conn.cursor()
@@ -184,7 +188,7 @@ class Database:
                         SET 
                             dateadded_id = ?, 
                             metadata_id = ?,
-                            datatablename_id = ?,
+                            datatablename = ?,
                             program_id = ?
                         WHERE 
                             id = ?
@@ -203,34 +207,56 @@ class Database:
                             id = ?
         """, (startdate_id, enddate_id, subject_id, FileData.metadata['box'], starttime_id, endtime_id, program_id, metadata_id))
 
+        self._store_datatables_(FileData)
         Database.conn.commit()
-        # Code to add rest of the file
+       
         cur.close()
     
     def _store_datatables_(self, FileData):
         """Stores data from the FileData parameter into the database"""
         """Data stored in the database will not be able to be overridden unless the entry is deleted"""
         data_table = FileData.dtname                #   get table name where data is to be stored
-        l_key = os.path.abspath(FileData.filename)  # get logical key from filename
-        i = self.lookup_id('filepath',l_key,'DataFiles')    # get primary key using logical key
-        self.store_cvars(self, FileData.cvars, i)
-        self.store_ivars(self, FileData.ivars, i)
-
-
-    def store_cvars(self, cvars, i):
-        """unpacks cvars and stores them into the database"""
+        logical_key = os.path.abspath(FileData.filename)  # get logical key from filename
         cur = Database.conn.cursor()
+        cur.execute("SELECT id from DataFiles WHERE filepath = ?",(logical_key,))
+        datafile_id = cur.fetchone()[0]
+        self._store_cvars_(FileData, datafile_id)
+        self._store_dvars_(FileData, datafile_id)
+        # Database.conn.commit() - uncomment when done debugging to batch commit
 
 
-    def store_ivars(self, ivars, i):
-        pass
+    def _store_cvars_(self, FileData, fk):
+        """unpacks cvars from FileData and stores them into the database"""
+        """Also stores the cvar foreign key"""
+        cur = Database.conn.cursor()
+        cur.execute("INSERT OR IGNORE INTO FRcVars (datafile_id) VALUES (?)", (fk,))
+        FileData.cvars_id = cur.lastrowid
+        cur.execute("UPDATE DataFiles SET cvars_id = ? WHERE id = ?", (FileData.cvars_id, fk))
+        for key, value in FileData.cvars.items():
+            sql = f"UPDATE FRcVars SET {key} = {value} WHERE id = {fk}"
+            cur.execute(sql)
+        cur.close()
 
 
-    def lookup_id(self, column, key, table_name):
+    def _store_dvars_(self, FileData, fk):
+        """unpacks cvars from FileData and stores them into the database"""
+        """Also stores the dvar foreign key"""
+        cur = Database.conn.cursor()
+        cur.execute("INSERT OR IGNORE INTO FRdVars (datafile_id) VALUES (?)", (fk,))
+        FileData.dvars_id = cur.lastrowid
+        cur.execute("UPDATE DataFiles SET dvars_id = ? WHERE id = ?", (FileData.dvars_id, fk))
+        for key, value in FileData.dvars.items():
+            sql = f"UPDATE FRdVars SET {key} = {value} WHERE id = {fk}"
+            cur.execute(sql)
+        cur.close()
+
+
+    def _lookup_id_(self, column, key, table_name):
         """Retrieves foreign key from specified table"""
-        sql = f"SELECT id FROM {table_name} WHERE {column} = {key}"
+        sql = "SELECT id FROM ? WHERE ? = ?"
+        params = (table_name, column, key)
         cur = Database.conn.cursor()
-        cur.execute(sql)
+        cur.execute(sql,params)
         i = cur.fetchone()[0]
         return i
 
@@ -244,5 +270,6 @@ if __name__ == "__main__":
     db._testing_()
     n09 = FR('test_data.bak')
     n06 = FR('test_data2.bak')
-    db.AddToDataFileTable(n09)
+    db.store_DataFile(n09)
+    db.store_DataFile(n06)
 
