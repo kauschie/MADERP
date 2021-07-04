@@ -193,7 +193,7 @@ class FileData:
 
 class FRFileData(FileData):
     valid_file_formats = ["Amy FR Program v8", "Amy FR Program v7", "Amy FR Program v6"]
-    dtname = 'FRData' # 'data table name in DoctorG.db'
+    dtname = 'FRiVars' # 'data table name in DoctorG.db'
     def __init__(self, filename=None):
         super().__init__(filename)
         # control variables (cvar) required for database module to access for this class
@@ -233,7 +233,7 @@ class FRFileData(FileData):
 
 class PRFileData(FileData):
     valid_file_formats = ["Amy PR Program"]
-    dtname = 'PRData'
+    dtname = 'PRiVars'
     # create cvar and ivars
 
 
