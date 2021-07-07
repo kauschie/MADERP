@@ -196,7 +196,7 @@ class FileData:
 
 class FRFileData(FileData):
     valid_file_formats = ["Amy FR Program v8", "Amy FR Program v7", "Amy FR Program v6"]
-    dtname = 'FRiVars' # 'data table name in DoctorG.db'
+    dtname = 'FRdVars' # 'data table name in DoctorG.db'
     def __init__(self, filename=None):
         super().__init__(filename)
         # control variables (cvar) required for database module to access for this class
@@ -218,11 +218,11 @@ class FRFileData(FileData):
         if self.metadata['program'] == 'Amy FR Program v6':
             self._cvar_indexes_.pop()
             self._cvar_names_.pop()
-        # independant variables (ivar) required for database module to access for this class
+        # dependant variables (dvar) required for database module to access for this class
         # each subclas needs to implement these variables differently for data insertion into the db
-        self._ivar_array_ = self.data['B']
-        self._ivar_indexes_ = [0,1,2,3,4,5]
-        self._ivar_names_ = [
+        self._dvar_array_ = self.data['B']
+        self._dvar_indexes_ = [0,1,2,3,4,5]
+        self._dvar_names_ = [
             'actrsp',
             'inactrsp',
             'rewards',
@@ -232,19 +232,19 @@ class FRFileData(FileData):
         ]
 
         self.cvars = _get_vars_(self._cvar_array_, self._cvar_indexes_, self._cvar_names_)
-        self.ivars = _get_vars_(self._ivar_array_, self._ivar_indexes_, self._ivar_names_)
+        self.dvars = _get_vars_(self._dvar_array_, self._dvar_indexes_, self._dvar_names_)
 
 class PRFileData(FileData):
     valid_file_formats = ["Amy PR Program"]
-    dtname = 'PRiVars'
-    # create cvar and ivars
+    dtname = 'PRdVars'
+    # create cvars and dvars
 
 
 def _get_vars_(array, indexes, names):
     """Looks up data in specified mpc array at specified list of indexes and creates a 
     vars dictionary with values being array[index] = data
     
-    used when looking up cvar and ivar data from FileData.data"""
+    used when looking up cvar and dvar data from FileData.data"""
     vars = {}
     values = [array[index] for index in indexes]
     i = 0
@@ -270,5 +270,5 @@ def _get_vars_(array, indexes, names):
 
 if __name__ == "__main__":
     Database = None
-    n09 = FRFileData('test_data.bak')
-    n06 = FRFileData('test_data2.bak')
+    n09 = FRFileData('data/test_data.bak')
+    n06 = FRFileData('data/test_data2.bak')

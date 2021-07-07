@@ -1,7 +1,7 @@
+## Updates database with 
+
 import sqlite3
 import os
-import datetime
-from Extraction import FileData
 from Extraction import FRFileData as FR
 
 
@@ -133,7 +133,7 @@ class Database:
         Database.conn.commit()
         cur.close()
 
-    def store_DataFile(self, FileData):
+    def storeDataFile(self, FileData):
         """Accepts a FileData object and adds the file to the DataFiles Table"""
         print(f"Adding {FileData.filename} to the database...")
         cur = Database.conn.cursor()
@@ -211,6 +211,7 @@ class Database:
         Database.conn.commit()
        
         cur.close()
+        
     
     def _store_datatables_(self, FileData):
         """Stores data from the FileData parameter into the database"""
@@ -222,7 +223,6 @@ class Database:
         datafile_id = cur.fetchone()[0]
         self._store_cvars_(FileData, datafile_id)
         self._store_dvars_(FileData, datafile_id)
-        # Database.conn.commit() - uncomment when done debugging to batch commit
 
 
     def _store_cvars_(self, FileData, fk):
@@ -268,8 +268,12 @@ class Database:
 if __name__ == "__main__":
     db = Database("DoctorG.db")
     db._testing_()
-    n09 = FR('test_data.bak')
-    n06 = FR('test_data2.bak')
-    db.store_DataFile(n09)
-    db.store_DataFile(n06)
-
+    i = 0
+    files = []
+    listy = os.listdir('data/')
+    for each in range(len(listy)):      # import all files in dir as datafiles and add their data to db
+        a = FR('data/'+listy[i])
+        files.append(a)
+        db.storeDataFile(a)
+        i+=1
+    print(files)
