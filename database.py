@@ -12,6 +12,11 @@ class Database:
         """Creates a connection to the main database for use in the Extraction module
             connection is stored in Database.conn class variable to use in the event multiple cursors are
             needed so that program doesn't get bogged down creating a connection to the database over and over
+        
+        call set_groups to import groups from configuration file and set them in the data table
+        automatically call set_groups after data import
+
+
         """
 
         if not Database.conn:
@@ -96,7 +101,8 @@ class Database:
             box INTEGER,
             starttime_id INTEGER,
             endtime_id INTEGER,
-            program_id INTEGER
+            program_id INTEGER,
+            groups TEXT
         );
 
         CREATE TABLE "FRdVars" (
@@ -211,7 +217,57 @@ class Database:
         Database.conn.commit()
        
         cur.close()
-        
+
+# i want to set the groups
+# i have the date, the subject and the group
+# i got the date id to scan datafiles for the correct files
+# i should now find the subject in the subject table then search 
+#           the metadata files found for the right subject
+
+# handle TypeError when looking through datafile and finding a subject_id that doesn't exist in the database
+
+    
+    def set_groups(self):
+        configuration_file_path = 'maderp_settings.ini'
+        cur = db.conn.cursor()
+        try:
+            config_file = open(configuration_file_path, 'r')
+        except OSError:
+            print("Could not locate the configuration file")
+        lines = config_file.readlines()
+        config_file.close()
+        if not lines:
+            raise TypeError("Could not read configuration file")
+
+        groups = {}
+        i = 0
+        for line in lines:
+            line = line.rstrip()
+            if i == 0:
+                date = line
+                i+=1
+                continue
+            words = line.split(' = ')
+            if '#' in words[0]: continue        # '#' at the start of a line as a simple way to distinguish a commented out line. This will cufrrently cause a bug if it appears after '=' in the config file
+            group = words[0]
+            subjects = words[1].split(',')
+            for subject in subjects:
+                groups[subject] = group
+        print(f"groups: {groups}")
+        cur.execute("SELECT id FROM Dates WHERE date = ?", (date,)) # get date_id from Dates
+        result = cur.fetchone()
+        print(f"result: {result}")
+        date_id = result[0]
+        print(f"date_id: {date_id}")
+        for key, value in groups.items():
+            print(f"Key: {key} Value: {value}")
+            cur.execute('SELECT id FROM Subjects WHERE subject = ?', ((key),))
+            sub_id = cur.fetchone()[0]
+            cur.execute('UPDATE Metadata SET groups = ? WHERE subject_id = ? AND startdate_id = ?', (value, sub_id, date_id))
+        Database.conn.commit()
+        cur.close()
+
+
     
     def _store_datatables_(self, FileData):
         """Stores data from the FileData parameter into the database"""
@@ -261,9 +317,9 @@ class Database:
         return i
 
 
+class FileNotFound(Exception):
+    pass
 
-
-        pass
 
 if __name__ == "__main__":
     db = Database("DoctorG.db")
