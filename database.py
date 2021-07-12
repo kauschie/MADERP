@@ -20,11 +20,14 @@ class Database:
 
 
         """
+        self.db_path = database
+        self._connect()
 
-        if not Database.conn:
+    def _connect(self):
+        while not Database.conn:
             try:
-                if database:
-                    DBQuery = database
+                if self.db_path:
+                    DBQuery = self.db_path
                 else:
                     print('Enter the filepath for the databse')
                     DBQuery = input('Press return to use default "DoctorG.db":')
@@ -32,15 +35,18 @@ class Database:
                         DBQuery = 'DoctorG.db'
                 Database.conn = sqlite3.connect(DBQuery)
                 print(f"Connection to {DBQuery} established")
-            except:
+                return True
+            except Exception:
                 print(f"Could not connect to {DBQuery}")
                 print("Check file name or path and try again")
-                quit()
-        else:
-            print("Connection to DoctorG.db already established")
-            print("Query for a cursor to the sqlite database...")
+                self.db_path = None
+                continue
+        print("Connection to DoctorG.db already established")
+        print("Query for a cursor to the sqlite database...")
+        return True
+        
     
-    def _erase_all_tables_(self, cursor):
+    def _erase_all_tables(self, cursor):
         """Erases all tables. 
         This should only be used for testing purposes which is why i made it an internal
         """
@@ -56,7 +62,7 @@ class Database:
         DROP TABLE IF EXISTS FRcVars
         ''')
     
-    def _create_all_tables_(self, cursor):
+    def _create_all_tables(self, cursor):
         """Creates all tables. 
         This should only be used for testing purposes which is why i made it an internal
         """
@@ -133,15 +139,15 @@ class Database:
             )
         ''')
 
-    def _testing_(self):
+    def _testing(self):
         """Starts the database fresh. Should only be used for testing otherwise you will lose all your data"""
         cur = Database.conn.cursor()
-        self._erase_all_tables_(cur)
-        self._create_all_tables_(cur)
+        self._erase_all_tables(cur)
+        self._create_all_tables(cur)
         Database.conn.commit()
         cur.close()
 
-    def storeDataFile(self, FileData):
+    def StoreDataFile(self, FileData):
         """Accepts a FileData object and adds the file to the DataFiles Table"""
         print(f"Adding {FileData.filename} to the database...")
         cur = Database.conn.cursor()
@@ -224,12 +230,11 @@ class Database:
 # i have the date, the subject and the group
 # i got the date id to scan datafiles for the correct files
 # i should now find the subject in the subject table then search 
-#           the metadata files found for the right subject
-
+#           the metadata files found for the right subjec
 # handle TypeError when looking through datafile and finding a subject_id that doesn't exist in the database
 
     
-    def set_groups(self, cfg_file_path=None):
+    def GetGroups(self, cfg_file_path=None):
         """ Sets groups to the subjects in the database. If a group is set in the database, it will be sorted by group when it's printed out.
 
         By default, this method will search for maderp_settings.ini in the working directory of the program. If a filepath is provided to the method, 
@@ -331,27 +336,15 @@ class Database:
         cur.close()
 
 
-    def _lookup_id_(self, column, key, table_name):
-        """Retrieves foreign key from specified table"""
-        sql = "SELECT id FROM ? WHERE ? = ?"
-        params = (table_name, column, key)
-        cur = Database.conn.cursor()
-        cur.execute(sql,params)
-        i = cur.fetchone()[0]
-        return i
-
-
-
-
 if __name__ == "__main__":
     db = Database("DoctorG.db")
-    db._testing_()
+    db._testing()
     i = 0
     files = []
     listy = os.listdir('data/')
     for each in range(len(listy)):      # import all files in dir as datafiles and add their data to db
         a = FR('data/'+listy[i])
         files.append(a)
-        db.storeDataFile(a)
+        db.StoreDataFile(a)
         i+=1
-    db.set_groups()
+    db.GetGroups()
