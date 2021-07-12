@@ -4,6 +4,8 @@ import sqlite3
 import os
 from Extraction import FRFileData as FR
 
+class NoGroupsFound(Exception):
+    pass
 
 class Database:
     conn = None
@@ -227,42 +229,64 @@ class Database:
 # handle TypeError when looking through datafile and finding a subject_id that doesn't exist in the database
 
     
-    def set_groups(self):
-        configuration_file_path = 'maderp_settings.ini'
+    def set_groups(self, cfg_file_path=None):
+        """ Sets groups to the subjects in the database. If a group is set in the database, it will be sorted by group when it's printed out.
+
+        By default, this method will search for maderp_settings.ini in the working directory of the program. If a filepath is provided to the method, 
+        the provided config will be used instead."""
+
+
+        if not cfg_file_path:
+            cfg_file_path = 'maderp_settings.ini' # default cfg file if none is passed
         cur = db.conn.cursor()
         try:
-            config_file = open(configuration_file_path, 'r')
+            cfg_handle = open(cfg_file_path, 'r')
+            lines = cfg_handle.readlines()
+            cfg_handle.close()
+            if not lines:
+                raise NoGroupsFound("Could not read configuration file and gather groups")
         except OSError:
-            print("Could not locate the configuration file")
-        lines = config_file.readlines()
-        config_file.close()
-        if not lines:
-            raise TypeError("Could not read configuration file")
+            print("Could not open the configuration file. Check to make sure the filepath is correct.")
+            cur.close()
+            return False
+        except NoGroupsFound:
+            print("Did not find any data in the configuration file mon")
+            print("What were you smokinnn when you made dat configuration file mon")
+            return False
 
         groups = {}
         i = 0
         for line in lines:
-            line = line.rstrip()
+            if '#' in line:                             # Filters out comments in the cfg file using '#'
+                line = line.split('#')[0]
+                if not line: continue
+            line = line.strip()
             if i == 0:
                 date = line
                 i+=1
                 continue
             words = line.split(' = ')
-            if '#' in words[0]: continue        # '#' at the start of a line as a simple way to distinguish a commented out line. This will cufrrently cause a bug if it appears after '=' in the config file
             group = words[0]
             subjects = words[1].split(',')
-            for subject in subjects:
+            for subject in subjects:            # 
                 groups[subject] = group
-        print(f"groups: {groups}")
         cur.execute("SELECT id FROM Dates WHERE date = ?", (date,)) # get date_id from Dates
-        result = cur.fetchone()
-        print(f"result: {result}")
+        try:
+            result = cur.fetchone()
+        except TypeError:           # Raise error if no date is found and then return false without updating groups
+            print(f"Unable to find data for {result} in the database. Perhaps data wasn't uploaded for that day or the date was formatted incorrectly in the cfg.")
+            print("The correct format should be 'YYYY-MM-DD' without the quotation marks and it should be the first line of the config")
+            cur.close()
+            return False
         date_id = result[0]
-        print(f"date_id: {date_id}")
         for key, value in groups.items():
             print(f"Key: {key} Value: {value}")
             cur.execute('SELECT id FROM Subjects WHERE subject = ?', ((key),))
-            sub_id = cur.fetchone()[0]
+            try:
+                sub_id = cur.fetchone()[0]
+            except TypeError:       # Skips the subject if their data isn't found
+                print(f"Unable to locate subject {key} in the database. Perhaps his data wasn't uploaded or his id was spelled wrong in the config")
+                continue
             cur.execute('UPDATE Metadata SET groups = ? WHERE subject_id = ? AND startdate_id = ?', (value, sub_id, date_id))
         Database.conn.commit()
         cur.close()
@@ -317,8 +341,6 @@ class Database:
         return i
 
 
-class FileNotFound(Exception):
-    pass
 
 
 if __name__ == "__main__":
@@ -332,4 +354,4 @@ if __name__ == "__main__":
         files.append(a)
         db.storeDataFile(a)
         i+=1
-    print(files)
+    db.set_groups()
