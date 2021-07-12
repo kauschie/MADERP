@@ -21,12 +21,12 @@
 ### TO DO ###
 
 # Short Term:
-#   - Database Construction/Destruction for testing
-#   - Inserting Data into the database
-#   - Retrieval Module 
-#       + selecting data from the database and outputting it to a CSV file
+#   - Output data from dataframe to csv text file
+#   - refactor database.py and get ready for integration with GUI
+#   - refactor Retrieve.py and get ready for integration with GUI
 #
 
 # Long Term:
 #   - Selecting Multiple Files at once
 #   - GUI
+#   - Directory Scan for files not included in the database along with a list of programs not found in the database

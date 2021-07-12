@@ -9,10 +9,8 @@ class QuerySelector():
 
 
 class DateQuery:
-    """Querys Data from DoctorG.db based on the specified date when initialized
-    date is first format checked 
-    
-    
+    """Querys Data from DoctorG.db based on the specified date when initialized.
+    Date is first format checked 
     
     """
     db = Database("DoctorG.db")
@@ -20,37 +18,26 @@ class DateQuery:
 
     def __init__(self, date):
         self.date = date
-        self._get_groups_()
         self._check_date_()
         # self._get_file_list_()
+        self._get_cvars_()
         self._get_data_()
         # Output headings
         # self.line1 = ["Dr. Amy Gancarz-Kausch's lab", 'Date:', date]
         # self.line2 = []
     
 
-    ## ToDo: read config file and sort data by group
-    def _get_groups_(self):
-        with open('maderp_settings.ini', 'r') as config_file:
-            lines = config_file.read()
-            
-
-
-
-
-
-
-
-# make a prompt beforehand that shows the subject_id's of the animals so that you can 
-# Utilizing the pandas library, SQL query is performed and returned in a DataFrame structure
+# make a prompt beforehand that shows the subject_id's of the animals so that you can filter animals out from the dataset
+# Utilizing the pandas library, an SQL query is performed and returned in a DataFrame structure
 # columns provides the headers for the data that is selected from DoctorG.db
 # 
 
 
     def _get_cvars_(self):
-        columns = ["Subjects", "Box" ,"Active Side", "FR", "Rewards", "Pump Duration", "Stimulus Duration", "Time Out Duration", "Cue Type"]
+        columns = ["Subjects", "Groups", "Box" ,"Active Side", "FR", "Rewards", "Pump Duration", "Stimulus Duration", "Time Out Duration", "Cue Type"]
         SQL_Query = pd.read_sql_query(
             f"""SELECT Subjects.subject, 
+                    Metadata.groups,
                     Metadata.box, 
                     FRcVars.active_side,
                     FRcVars.fr,
@@ -68,39 +55,42 @@ class DateQuery:
                 WHERE
                     Metadata.startdate_id = {self.date_id}
                 ORDER BY
-                    FRcVars.active_side ASC,
+                    Metadata.groups ASC,
                     Subjects.subject ASC""", DateQuery.db.conn)
         df = pd.DataFrame(SQL_Query) # SQL query is returned in a DataFrame
         df.set_axis(columns, inplace=True, axis=1)  # changes column headings
-        print(df)
+        df.set_index('Subjects',inplace=True)
+        self.df_cvars = df
+        print(self.df_cvars)
     # store df for writing to csv for later
     def _get_data_(self):
-        columns = ["Subjects", "Box" ,"Active Side", "FR", "Rewards", "Pump Duration", "Stimulus Duration", "Time Out Duration", "Cue Type"]
+        columns = ["Subjects", "Groups", "Box" , "Act Rsp", "Inact Rsp", "Rewards", "Act Rsp TO", "Inact Rsp TO", "Session Time"]
         SQL_Query = pd.read_sql_query(
-            f"""SELECT Subjects.subject, 
+            f"""SELECT Subjects.subject,
+                    Metadata.groups, 
                     Metadata.box, 
-                    FRcVars.active_side,
-                    FRcVars.fr,
-                    FRcVars.max_rewards,
-                    FRcVars.pump_dur,
-                    FRcVars.light_dur,
-                    FRcVars.to_dur,
-                    FRcVars.cue_type
+                    FRdVars.actrsp,
+                    FRdVars.inactrsp,
+                    FRdVars.rewards,
+                    FRdVars.actrspto,
+                    FRdVars.inactrspto,
+                    FRdVars.sessionend
                 FROM 
-                    Subjects JOIN Metadata JOIN DataFiles JOIN FRcVars
+                    Subjects JOIN Metadata JOIN DataFiles JOIN FRdVars
                 ON 
                     Subjects.id = Metadata.subject_id
                     AND Metadata.id = DataFiles.metadata_id
-                    AND DataFiles.id = FRcVars.datafile_id
+                    AND DataFiles.id = FRdVars.datafile_id
                 WHERE
                     Metadata.startdate_id = {self.date_id}
                 ORDER BY
-                    FRcVars.active_side ASC,
+                    Metadata.groups ASC,
                     Subjects.subject ASC""", DateQuery.db.conn)
         df = pd.DataFrame(SQL_Query) # SQL query is returned in a DataFrame
         df.set_axis(columns, inplace=True, axis=1)  # changes column headings
-        print(df)
-
+        df.set_index("Subjects", inplace=True)
+        self.df_data = df
+        print(self.df_data)
 
     def _check_date_(self):
         try:
