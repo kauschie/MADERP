@@ -3,6 +3,16 @@
 #   Data Extraction from MPC Data Files
 
 
+class DataParsingError(Exception):
+    # Print error to the screen with the GUI or to a log 
+    pass
+class InvalidProgramError(Exception):
+    pass
+    # Print error that an incorrect file type was selected for datafile
+
+class MetadataError(Exception):
+    pass
+
 class FileData:
     """File Object with Data and Metadata taken from MPC Files
     
@@ -14,23 +24,40 @@ class FileData:
         """If file_data object is called with filename kwarg, methods are
         automatically called to retrieve data. 
         
-        Otherwise, program will prompt for filename in terminal"""
-        if filename:
-            self.filename = filename
-        else:
-            self.filename = self._get_filename_()
-        self.lines = self._load_file_()
-        self.metadata = self._get_metadata_()
-        # print(metadata) # Debug
-        if not self.metadata['program'] in self.valid_file_formats:
-            raise Exception("Invalid file format")
-        self.data = self._get_data_()
+        This class is designed to accept calls to FileData from a menu where the only argument is the filepath.
+        Otherwise, program will prompt for filename in terminal
+        
+        self.metadata & self.data will be set to None if there are any errors importing the data
+        """
+
+        if not filename:
+            filename = self._get_filename()
+        self.filename = filename
+        self.lines = self._import_file()
+        try:
+            self._get_metadata()
+            if not self.metadata['program'] in self.valid_file_formats:
+                raise InvalidProgramError
+        except InvalidProgramError:
+            print(f"{self.metadata['program']} is unable to be imported as a {type(self).__name__} object")
+        except MetadataError:
+            print(f"The metadata for {self.filename} could not be read")
+        except Exception as e:
+            print(f"Unexpected {type(e)} error with {e.args}")
+        try:
+            self._get_data()
+        except DataParsingError:
+            self.data = None
+        except Exception as e:
+            print(f"Unexpected {type(e)} error with {e.args}")
+            self.data = None
+
         FileData.list_of_datafiles.append(self)
 
         # for key, value in data.items():
         #     print(key,':',value,'\n') # Debug
 
-    def _get_filename_(self):
+    def _get_filename(self):
         """Prompts the user for a relative filename or the absolute filepath
         This method is called if file_data is not initialized with a filename
 
@@ -43,79 +70,81 @@ class FileData:
         if len(fname)<1: fname = 'c:\\my_docs\\Coding\\Python\\maderp\\test_data.bak'
         return fname
 
-    def _load_file_(self):
+    def _import_file(self):
         """Attempts to open and read a provided file.
         If it is successful it returns the contents of the file"""
         # print(f"Attempting to open file {fname}...") # Debug
-        try:
-            fhand = open(self.filename)
-        except OSError:
-            print(f"Could not open {self.filename}")
-            print("Verify the file name and this program's location")
-            print("Quitting now...")
-            quit()
-        # print(f"{fname} opened successfully...") # Debug
-        lines = fhand.readlines()
-        fhand.close()
-        return lines
+        while True:
+            try:
+                fhand = open(self.filename)
+                lines = fhand.readlines()
+                fhand.close()
+                return lines
+            except OSError:
+                print(f"Could not open {self.filename}")
+                print("Verify the file path and try again...")
+            fhand = input("Enter the full or relative file path: ")
 
-    def _get_metadata_(self):
+    def _get_metadata(self):
         """Reads through the lines of a file to find and return the metadata as a dictionary
     Requires the file to be opened and it's contents to be read into a variable and passed as an arg"""
-
-        i = 1
-        for line in self.lines:
-            line = line.rstrip()
-            if line:
-                words = line.split()
-                if i == 1:
-                    file_name = line[6:]
-                    i+=1
-                    continue
-                elif i == 2: 
-                    pieces = words[2].split('/')
-                    start_date = '20'+pieces[2]+'-'+pieces[0]+'-'+pieces[1]
-                    i += 1
-                    continue
-                elif i == 3:
-                    pieces = words[2].split('/')
-                    end_date = '20'+pieces[2]+'-'+pieces[0]+'-'+pieces[1]
-                    i += 1
-                    continue
-                elif i == 4:
-                    rat_id = line[9:]
-                    i += 1
-                    continue
-                elif i == 5:
-                    experiment = int(line[12:])
-                    i += 1
-                    continue
-                elif i == 6:
-                    group = int(line[7:])
-                    i += 1
-                    continue
-                elif i == 7:
-                    box = int(words[1])
-                    i += 1
-                    continue
-                elif i == 8:
-                    start_time = words[2]
-                    pieces = words[2].split(':')
-                    num = int(pieces[0])
-                    pieces[0] = f"{num:02}"
-                    start_time = ':'.join(pieces)
-                    i += 1
-                    continue
-                elif i == 9:
-                    end_time = words[2]
-                    i += 1
-                    continue
-                elif i == 10:
-                    program = line[5:]
-                    i += 1
-                    continue
-                else:
-                    break
+        try:
+            i = 1
+            for line in self.lines:
+                line = line.rstrip()
+                if line:
+                    words = line.split()
+                    if i == 1:
+                        file_name = line[6:]
+                        i+=1
+                        continue
+                    elif i == 2: 
+                        pieces = words[2].split('/')
+                        start_date = '20'+pieces[2]+'-'+pieces[0]+'-'+pieces[1]
+                        i += 1
+                        continue
+                    elif i == 3:
+                        pieces = words[2].split('/')
+                        end_date = '20'+pieces[2]+'-'+pieces[0]+'-'+pieces[1]
+                        i += 1
+                        continue
+                    elif i == 4:
+                        rat_id = line[9:]
+                        i += 1
+                        continue
+                    elif i == 5:
+                        experiment = int(line[12:])
+                        i += 1
+                        continue
+                    elif i == 6:
+                        group = int(line[7:])
+                        i += 1
+                        continue
+                    elif i == 7:
+                        box = int(words[1])
+                        i += 1
+                        continue
+                    elif i == 8:
+                        start_time = words[2]
+                        pieces = words[2].split(':')
+                        num = int(pieces[0])
+                        pieces[0] = f"{num:02}"
+                        start_time = ':'.join(pieces)
+                        i += 1
+                        continue
+                    elif i == 9:
+                        end_time = words[2]
+                        i += 1
+                        continue
+                    elif i == 10:
+                        program = line[5:]
+                        i += 1
+                        continue
+                    else:
+                        break
+        except Exception as e:
+            self.metadata = None
+            raise MetadataError(f"Error occured on line {i} with args ({e.args}")
 
         metadata = {
             'file_name': file_name,
@@ -123,24 +152,19 @@ class FileData:
             'end_date': end_date,
             'rat_id': rat_id,
             'experiment' : experiment,
-            'group' : group,
+            'groups' : group,
             'box': box,
             'start_time' : start_time,
             'end_time' : end_time,
             'program': program,
         }
 
-        # <!> Raise Error 
-        if not len(metadata) == 10:
-            print("Could not Gather file information")
-            print("Quitting now...")
-            quit()
-        
-        return metadata
+        self.metadata = metadata
 
-    def _get_data_(self):
+
+    def _get_data(self):
         """Reads through the lines of a file to find and return all data and vars as a dictionary
-    Requires the file to be opened and it's contents to be read into a variable and passed as an arg"""
+    Requires the file to be opened and it's contents to be read into self.lines"""
         i = 1
         header_size = 11
         errors = 0
@@ -155,10 +179,24 @@ class FileData:
                 i += 1
                 continue
             words = line.split()
+    
+    ## MPC data files consist of 26 variables with each variable being one of two variable types.
+    # Each variable is named with a letter of the alphabet. 
+    # If an array isn' listed within the mpc program as having dimensionality to it, then it will be a single variable type
+    # if the array has dimensionality to it then it will be essentially be an indexed list of values called an array
+    # the Single Variable types are listed first with the pattern [Letter]: [data] 
+    # Variables are split at ':'. 
+    #              If there are two items after the split its a variable
+    #                                    and the first one is a letter its a variable
+    #               If the first item is a letter
+    #               If there's a numerical value you are in the array variables
 
+    # The arrays are printed afterwards so an array_flag is set to switch the program logic
+
+
+    ## If the line isnt blank, and if it starts with a letter and the arrays haven't started printing yet
             if line and words[0][0].isalpha() and array_flag == 0:
                 array_char = words[0][0]
-                # print(f"found the {line[0]} array") # Debug
                 words = line.split()
                 # print(f"found the following words: {words}") # Debug
                 if len(words) == 2:                     # identify variable and store data in dictionary wntry
@@ -171,25 +209,30 @@ class FileData:
                     array_list = []
                     continue
                 else:                                   # error catch in case a data file isn't formatted correctly
-                    print("you encountered an error parsing the data...")
-                    return None
+                    raise DataParsingError(f"I was expecting a one or two word list and instead there were {len(words)}")
                     ## Return an Exception Here Later <!>
             
+            ## if the line begins with a digit, continue adding the data into the array's list
             if line and words[0][0].isdigit():
                 for word in words[1:]:
                     array_list.append(int(float(word)))
                 continue
 
+            ## If the line starts with a letter and the array flag has already been triggered, 
+            ## it's time to begin a new list and enter that in the dictionary
+
             if line and words[0][0].isalpha() and array_flag == 1:       # identify if line starts with the array variable or a digit
                 length = len(array_list)    # if the line starts with a digit, the line being read is within a data array
-                # print(f"There were {length} elements in the {array_char} array") # Debug
                 d[array_char] = array_list
                 array_char = words[0][0]
                 array_list = []
                 continue
 
         d[array_char] = array_list
-        return d
+        if not len(d) == 26:
+            raise DataParsingError(f"Error parsing the data for {self.filename}. I was expecting 26 variables and I found {len(d)}")
+
+        self.data = d
 
 ## Notes about adaptations of FR Programs to data structure
 ## Amy FR Program v6 doesnt have variable A(10) - Cue Type
@@ -201,6 +244,11 @@ class FRFileData(FileData):
         super().__init__(filename)
         # control variables (cvar) required for database module to access for this class
         # each subclass needs to implement these variables differently for data insertion into database
+        # _cvar_array should be the dictionary key for the array that the data is found in
+        # a list of indexes that the array elements are in the corresponding array
+        # a list of names in sequential order of the data being pulled out that corresponds] to the columns from the DoctorG.db database
+        # if the values are spread throughout multiple arrays then the _get_multi_vars will need to be implemented which accepts lists of lists for the arrays, names and indexes
+        
         self._cvar_array_ = self.data['A']
         self._cvar_indexes_ = [0,1,2,3,4,5,6,7,10]
         self._cvar_names_ = [
@@ -231,8 +279,8 @@ class FRFileData(FileData):
             'inactrspto',
         ]
 
-        self.cvars = _get_vars_(self._cvar_array_, self._cvar_indexes_, self._cvar_names_)
-        self.dvars = _get_vars_(self._dvar_array_, self._dvar_indexes_, self._dvar_names_)
+        self.cvars = _get_vars(self._cvar_array_, self._cvar_indexes_, self._cvar_names_)
+        self.dvars = _get_vars(self._dvar_array_, self._dvar_indexes_, self._dvar_names_)
 
 class PRFileData(FileData):
     valid_file_formats = ["Amy PR Program"]
@@ -240,7 +288,7 @@ class PRFileData(FileData):
     # create cvars and dvars
 
 
-def _get_vars_(array, indexes, names):
+def _get_vars(array, indexes, names):
     """Looks up data in specified mpc array at specified list of indexes and creates a 
     vars dictionary with values being array[index] = data
     
